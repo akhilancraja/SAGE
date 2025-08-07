@@ -1,0 +1,22 @@
+# Virtual environment
+.venv/
+
+# Local models
+models/
+*.gguf
+.model_built
+
+# Python build artifacts
+__pycache__/
+*.pyc
+
+# Build output
+dist/
+build/
+*.exe
+*.pdf
+oterm/build/
+oterm/dist/
+
+# IDE/editor settings
+.vscode/
