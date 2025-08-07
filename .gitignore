@@ -2,8 +2,7 @@
 .venv/
 
 # Local models
-models/
-*.gguf
+models/*.gguf
 .model_built
 
 # Python build artifacts
