@@ -1,0 +1,95 @@
+[project]
+name = "oterm"
+version = "0.14.1"
+description = "The terminal client for Ollama."
+authors = [{ name = "Yiorgis Gozadinos", email = "ggozadinos@gmail.com" }]
+license = { text = "MIT" }
+readme = { file = "README.md", content-type = "text/markdown" }
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: Microsoft :: Windows :: Windows 10",
+    "Operating System :: Microsoft :: Windows :: Windows 11",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Typing :: Typed",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "textual>=3.2.0,<3.3.0",
+    "typer>=0.15.2,<0.16",
+    "python-dotenv>=1.0.1",
+    "aiosql>=13.4,<14",
+    "aiosqlite>=0.21.0,<0.22",
+    "packaging>=25.0,<26",
+    "pillow>=11.2.1,<12",
+    "ollama>=0.5.0,<0.6",
+    "textualeffects>=0.1.4",
+    "pydantic>=2.11.3,<2.12",
+    "textual-image>=0.8.2,<0.9.0",
+    "fastmcp>=2.8.0,<2.9",
+]
+
+[project.urls]
+Homepage = "https://github.com/ggozad/oterm"
+Repository = "https://github.com/ggozad/oterm"
+Issues = "https://github.com/ggozad/oterm/issues"
+Documentation = "https://ggozad.github.io/oterm/"
+
+[project.scripts]
+oterm = "oterm.cli.oterm:cli"
+
+[tool.uv]
+dev-dependencies = [
+    "ruff>=0.11.6",
+    "pdbpp",
+    "pytest>=8.3.4",
+    "pytest-asyncio>=0.25.3",
+    "textual-dev>=1.7.0",
+    "homebrew-pypi-poet>=0.10.0",
+    "mkdocs>=1.6.1",
+    "mkdocs-material>=9.6.5",
+    "pre-commit>=4.2.0",
+    "pyright>=1.1.400",
+]
+
+[tool.uv.sources]
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "UP",
+    "I",
+] # Enable Flake's "E" and "F" codes by default and "I" for sorting imports
+ignore = ["E501"]
+per-file-ignores = { "__init__.py" = ["F401", "F403"] }
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.sdist]
+exclude = ["/screenshots", "/examples"]
+
+[tool.hatch.build.targets.wheel]
+only-packages = true
