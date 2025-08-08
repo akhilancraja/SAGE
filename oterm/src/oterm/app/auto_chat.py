@@ -3,7 +3,7 @@ auto_chat.py - Custom startup logic for SAGE
 
 This module overrides the default Oterm startup flow to automatically create
 a new chat session using the 'mistral-7b-sage' model, bypassing the model
-picker screen and preloading the interface with a named session.
+picker screen and preloading the interface with a named session and welcome message.
 """
 from textual.widgets import TabPane
 from oterm.app.widgets.chat import ChatContainer
