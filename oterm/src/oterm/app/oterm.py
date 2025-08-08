@@ -11,6 +11,7 @@ from oterm.app.chat_export import ChatExport, slugify
 from oterm.app.pull_model import PullModel
 from oterm.app.splash import splash
 from oterm.app.widgets.chat import ChatContainer
+from oterm.app.auto_chat import create_sage_session
 from oterm.config import appConfig
 from oterm.store.store import Store
 from oterm.tools.external import load_external_tools
@@ -241,7 +242,8 @@ class OTerm(App):
             if not saved_chats:
                 # Pyright suggests awaiting here which has bitten me twice
                 # so I'm ignoring it
-                self.action_new_chat()  # type: ignore
+                tabs = self.query_one(TabbedContent) # self.action_new_chat()  # type: ignore
+                await create_sage_session(tabs)
             else:
                 tabs = self.query_one(TabbedContent)
                 for chat_model in saved_chats:
