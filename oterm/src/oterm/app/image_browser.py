@@ -1,19 +1,29 @@
 """
-Adapted Oterm file picker for manifest browsing.
+Adapted from Oterm's image picker to a general manifest file picker for SAGE.
 
-This version:
-- Defaults to the user's Downloads (fallback: Documents/Home)
-- Allows selecting any file type (txt, csv, json, pdf, etc.)
-- Returns (Path, "") for non-image files so they can be processed as manifests
-- Still supports images for preview if needed
+Changes:
+- Removed image preview logic; supports any file type (txt, csv, json, pdf, docx, xlsx, etc.).
+- Defaults to opening the user's Downloads folder (fallback to Documents or Home).
+- Reads the selected file's text content (with format-specific parsing where applicable)
+  and returns it directly to the caller.
+- Used together with prompt.py so that selecting a file sends its contents
+  straight into the chat for immediate model processing.
 """
-from base64 import b64encode
-from io import BytesIO
-from pathlib import Path
 
 from pathlib import Path
+from textual import on
+from textual.app import ComposeResult
+from textual.containers import Container, Horizontal, Vertical
+from textual.screen import ModalScreen
+from textual.widgets import DirectoryTree, Input, Label
+
+# File reading libraries
+import fitz       # PyMuPDF for PDF
+import docx       # python-docx for Word
+import openpyxl   # for Excel
 
 def get_default_pick_dir() -> Path:
+    """Return a sensible default folder for file picker."""
     home = Path.home()
     for sub in ("Downloads", "Documents"):
         p = home / sub
@@ -23,66 +33,58 @@ def get_default_pick_dir() -> Path:
 
 DEFAULT_ROOT = get_default_pick_dir()
 
-import PIL.Image as PILImage
-from PIL import UnidentifiedImageError
-from textual import on
-from textual.app import ComposeResult
-from textual.containers import Container, Horizontal, Vertical
-from textual.screen import ModalScreen
-from textual.widgets import DirectoryTree, Input, Label
-from textual_image.widget import Image
+def load_manifest_text(path: Path) -> str:
+    """Load text from a manifest file depending on type."""
+    suffix = path.suffix.lower()
+    if suffix in (".txt", ".csv", ".json"):
+        return path.read_text(encoding="utf-8", errors="ignore")
+    elif suffix == ".pdf":
+        doc = fitz.open(path)
+        return "\n".join(page.get_text() for page in doc)
+    elif suffix == ".docx":
+        d = docx.Document(path)
+        return "\n".join(p.text for p in d.paragraphs)
+    elif suffix in (".xlsx", ".xlsm"):
+        wb = openpyxl.load_workbook(path, read_only=True)
+        text_chunks = []
+        for sheet in wb:
+            for row in sheet.iter_rows(values_only=True):
+                text_chunks.append("\t".join(str(cell or "") for cell in row))
+        return "\n".join(text_chunks)
+    else:
+        return f"[Unsupported file type: {suffix}]"
 
-# NOTE: Using DirectoryTree instead of ImageDirectoryTree so all files show
-# from oterm.app.widgets.image import IMAGE_EXTENSIONS, ImageDirectoryTree
-IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"}  # local set
+class ImageSelect(ModalScreen[str]):
+    """
+    NOTE: Retained original class name for Oterm imports.
+    This is now a generic manifest file picker.
+    """
 
-class ImageSelect(ModalScreen[tuple[Path, str]]):
     BINDINGS = [
         ("escape", "cancel", "Cancel"),
     ]
 
     def action_cancel(self) -> None:
-        self.dismiss()
+        self.dismiss("")
 
     async def on_mount(self) -> None:
         dt = self.query_one(DirectoryTree)
         dt.show_guides = False
-        dt.path = DEFAULT_ROOT # <- start in manifests/
+        dt.path = DEFAULT_ROOT
         dt.focus()
 
-    @on(DirectoryTree.FileSelected) # Patched
-    async def on_image_selected(self, ev: DirectoryTree.FileSelected) -> None:
-        suffix = ev.path.suffix.lower()
-        if suffix in IMAGE_EXTENSIONS:
-            try:
-                buffer = BytesIO()
-                image = PILImage.open(ev.path)
-                if image.mode != "RGB":
-                    image = image.convert("RGB")
-                image.save(buffer, format="JPEG")
-                b64 = b64encode(buffer.getvalue()).decode("utf-8")
-                self.dismiss((ev.path, b64))
-            except UnidentifiedImageError:
-                # fall back to path-only if somehow not an image
-                self.dismiss((ev.path, ""))
-        else:
-           # NEW: for manifests (txt/csv/json/pdf/docx/etc.), return path only
-            self.dismiss((ev.path, "")) 
-
-    @on(DirectoryTree.NodeHighlighted)
-    async def on_image_highlighted(self, ev: DirectoryTree.NodeHighlighted) -> None:
-        path = ev.node.data.path  # type: ignore
-        image_widget = self.query_one(Image)
-        if path.suffix.lower() in IMAGE_EXTENSIONS:
-            try:
-                image_widget.image = PILImage.open(path.as_posix())
-            except UnidentifiedImageError:
-                image_widget.image = None
-        else:
-            image_widget.image = None
+    @on(DirectoryTree.FileSelected)
+    async def on_file_selected(self, ev: DirectoryTree.FileSelected) -> None:
+        """When a file is picked, read its text and send directly to chat."""
+        try:
+            content = load_manifest_text(ev.path)
+        except Exception as e:
+            content = f"[Error reading file: {e}]"
+        self.dismiss(content)  # Return plain text to caller
 
     @on(Input.Changed)
     async def on_root_changed(self, ev: Input.Changed) -> None:
+        """Handle changes in root path input box."""
         dt = self.query_one(DirectoryTree)
         path = Path(ev.value)
         if not path.exists() or not path.is_dir():
@@ -90,13 +92,11 @@ class ImageSelect(ModalScreen[tuple[Path, str]]):
         dt.path = path
 
     def compose(self) -> ComposeResult:
-        with Container(
-            id="image-select-container", classes="screen-container full-height"):
+        """UI layout for file picker."""
+        with Container(id="manifest-select-container", classes="screen-container full-height"):
             with Horizontal():
-                with Vertical(id="image-directory-tree"):
+                with Vertical(id="manifest-directory-tree"):
                     yield Label("Select a manifest for analysis:", classes="title")
                     yield Label("Root:")
                     yield Input(DEFAULT_ROOT.as_posix())
                     yield DirectoryTree(DEFAULT_ROOT.as_posix())
-                with Container(id="image-preview"):
-                    yield Image(id="image")

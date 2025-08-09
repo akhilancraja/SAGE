@@ -1,3 +1,13 @@
+"""
+Modified for SAGE manifest upload workflow.
+
+This patch changes the "add image" action so that it no longer handles
+images. Instead, when the user selects a file via the ImageSelect screen
+(the file picker), the file contents are read (by image_browser.py) and
+immediately sent to the chat as if the user had typed them manually.
+This allows analysts to upload and process manifest files directly
+without copy-pasting, preserving the original keybinds/UI flow.
+"""
 from dataclasses import dataclass
 from typing import cast
 
@@ -166,14 +176,15 @@ class FlexibleInput(Widget):
             pass
 
     def action_add_image(self) -> None:
-        async def on_image_selected(image) -> None:
-            if image is None:
+        async def on_image_selected(result) -> None:
+            if not result:
                 return
-            path, b64 = image
-            self.post_message(ImageAdded(path, b64))
+            # result is now the manifest text returned by ImageSelect
+            self.post_message(self.Submitted(self, result))
 
         screen = ImageSelect()
         self.app.push_screen(screen, on_image_selected)
+
 
     @on(PastableInput.Submitted, "#promptInput")
     def on_input_submitted(self, event: PastableInput.Submitted):
