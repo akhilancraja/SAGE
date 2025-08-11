@@ -29,6 +29,7 @@ from oterm.store.store import Store
 from oterm.tools import available_tool_calls
 from oterm.types import ChatModel, MessageModel
 from oterm.utils import parse_response, throttle
+from ollama import Message as OllamaMessage
 
 
 class ChatContainer(Widget):
@@ -130,6 +131,16 @@ class ChatContainer(Widget):
         try:
             response = ""
 
+            # NEW: inject hidden engineered prompt (from file upload) as a one-off system msg
+            if getattr(self, "_hidden_system_prompt", None):
+                try:
+                    self.ollama.history.insert(
+                        0, OllamaMessage(role="system", content=self._hidden_system_prompt)
+                    )
+                finally:
+                    # consume so it doesn't leak into the next turn
+                    self._hidden_system_prompt = None
+
             async for thought, text in self.ollama.stream(
                 message, [img for _, img in self.images]
             ):
@@ -197,6 +208,12 @@ class ChatContainer(Widget):
         if not message.strip():
             input.focus()
             return
+
+        # NEW: stash hidden engineered prompt for this turn (if provided by upload)
+        if getattr(event, "hidden", None):
+            self._hidden_system_prompt = event.hidden  # will be consumed by response_task
+        else:
+            self._hidden_system_prompt = None
 
         self.inference_task = asyncio.create_task(self.response_task(message))
 

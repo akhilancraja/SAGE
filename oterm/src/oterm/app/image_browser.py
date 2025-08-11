@@ -22,6 +22,27 @@ import fitz       # PyMuPDF for PDF
 import docx       # python-docx for Word
 import openpyxl   # for Excel
 
+MAX_CHARS = 20000  # keep under your context budget
+
+# Prompt Engineering
+def _truncate_for_model(text: str, limit: int = MAX_CHARS) -> tuple[str, bool]:
+    if len(text) <= limit:
+        return text, False
+    return text[:limit], True
+
+def _build_manifest_prompt(filename: str, body: str, truncated: bool) -> str:
+    note = "\n\n[Note: Input truncated for initial pass.]" if truncated else ""
+    return (
+        "You are assisting an export‑compliance analyst. Read the manifest text and produce a concise, factual output.\n"
+        "Extract these if present (use 'N/A' when missing):\n"
+        "• Origin country  • Destination country  • Shipper / Consignee / End‑user\n"
+        "• Items/models (e.g., GPU names)  • Quantities  • HS/ECCN codes  • Dates / PO / Invoice #\n"
+        "Then provide a 2–3 sentence summary of what this document is about.\n"
+        "Do not speculate or advise—just extract and summarize.\n\n"
+        f"--- BEGIN MANIFEST: {filename} ---\n{body}\n--- END MANIFEST ---"
+        f"{note}"
+    )
+
 def get_default_pick_dir() -> Path:
     """Return a sensible default folder for file picker."""
     home = Path.home()
@@ -75,12 +96,18 @@ class ImageSelect(ModalScreen[str]):
 
     @on(DirectoryTree.FileSelected)
     async def on_file_selected(self, ev: DirectoryTree.FileSelected) -> None:
-        """When a file is picked, read its text and send directly to chat."""
+        """When a file is picked, read text, wrap with instructions, and send to chat."""
         try:
-            content = load_manifest_text(ev.path)
+            raw = load_manifest_text(ev.path)
+            body, truncated = _truncate_for_model(raw)            # uses MAX_CHARS guard
+            content = _build_manifest_prompt(ev.path.name, body, truncated)
         except Exception as e:
-            content = f"[Error reading file: {e}]"
-        self.dismiss(content)  # Return plain text to caller
+            content = f"[Error reading file '{ev.path.name}': {e}]"
+        self.dismiss({ # Return filename and hidden content
+            "filename": ev.path.name,
+            "hidden": content,    
+        })
+
 
     @on(Input.Changed)
     async def on_root_changed(self, ev: Input.Changed) -> None:

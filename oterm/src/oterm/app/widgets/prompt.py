@@ -104,13 +104,14 @@ class FlexibleInput(Widget):
     text = reactive("")
 
     BINDINGS = [
-        Binding("ctrl+i", "add_image", "add image", id="add.image"),
+        Binding("ctrl+i", "add_image", "analyze a manifest", id="add.image"),
     ]
 
     @dataclass
     class Submitted(Message):
         input: "FlexibleInput"
         value: str
+        hidden: str | None = None # Extending the Submitted event to carry hidden text
 
         @property
         def control(self) -> "FlexibleInput":
@@ -175,15 +176,21 @@ class FlexibleInput(Widget):
         except NoMatches:
             pass
 
-    def action_add_image(self) -> None:
+    def action_add_image(self) -> None: # Updated to understand the dict coming back from ImageSelect
         async def on_image_selected(result) -> None:
             if not result:
                 return
-            # result is now the manifest text returned by ImageSelect
-            self.post_message(self.Submitted(self, result))
+            # result is either a plain string (legacy) or our dict payload
+            if isinstance(result, dict) and "hidden" in result:
+                visible = f"Analyzing: {result.get('filename', 'file')}"
+                self.post_message(self.Submitted(self, visible, hidden=result["hidden"]))
+            else:
+                # fallback: treat as normal typed input
+                self.post_message(self.Submitted(self, str(result)))
 
         screen = ImageSelect()
         self.app.push_screen(screen, on_image_selected)
+
 
 
     @on(PastableInput.Submitted, "#promptInput")
@@ -223,7 +230,7 @@ class FlexibleInput(Widget):
         with Horizontal():
             yield PastableInput(
                 id="promptInput",
-                placeholder="Your message…",
+                placeholder="Type a message or choose an option from the menu below…",
             )
             yield PostableTextArea(id="promptArea")
             with Horizontal(id="button-container"):
