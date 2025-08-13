@@ -6,7 +6,7 @@ a new chat session using the 'mistral-7b-sage' model, bypassing the model
 picker screen and preloading the interface with a named session and welcome message.
 """
 from textual.widgets import TabPane
-from oterm.app.widgets.chat import ChatContainer
+from oterm.app.widgets.chat import ChatContainer, ChatItem
 from oterm.types import ChatModel
 from oterm.store.store import Store
 
@@ -14,7 +14,7 @@ async def create_sage_session(tabs):
     store = await Store.get_store()
 
     chat_model = ChatModel(
-        model="mistral-7b-sage",
+        model="sage_v0.9",
         name="SAGE Session"
     )
 

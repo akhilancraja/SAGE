@@ -20,7 +20,7 @@ def get_resource_path(name: str) -> str:
         return os.path.join(sys._MEIPASS, name)
     return os.path.abspath(name)
 
-def ensure_model_exists(model_name="mistral-7b-sage", modelfile="Modelfile", flag_file=".model_built"):
+def ensure_model_exists(model_name="sage_v0.9", modelfile="Modelfile", flag_file=".model_built"):
     if Path(flag_file).exists():
         print(f"[SAGE] Model already built. Skipping setup.")
         return
@@ -85,9 +85,11 @@ def main():
     print(" ")
     print(" ")
     print("             SAGE — Secure Agent for GPU Export ")
-    print("                        Version 0.1.0           ")
+    print("                        Version 1.0.0           ")
     print(" ")
-    print("     Copyright (C) Akhilan Celeis Raja. All rights reserved.")
+    print("     Copyright (c) Akhilan Celeis Raja. All rights reserved.")
+    print("\n")
+    print("              Contact: help.sage@protonmail.com")
     print("\n")
     print("----------------------------------------------------------------")
 

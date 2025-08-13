@@ -19,7 +19,6 @@ from oterm.tools.mcp.setup import setup_mcp_servers, teardown_mcp_servers
 from oterm.types import ChatModel, ExternalToolDefinition
 from oterm.utils import check_ollama, is_up_to_date
 
-
 class OTerm(App):
     TITLE = "SAGE"
     SUB_TITLE = "Secure Agent for GPU Export"
@@ -105,7 +104,7 @@ class OTerm(App):
         tabs = self.query_one(TabbedContent)
         tab_count = tabs.tab_count
 
-        name = f"chat #{tab_count + 1} - {chat_model.model}"
+        name = f"SAGE Session #{tab_count + 1}"
         chat_model.name = name
 
         id = await store.save_chat(chat_model)
